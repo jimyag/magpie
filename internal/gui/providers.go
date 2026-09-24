@@ -29,6 +29,7 @@ type modelJSON struct {
 type providerJSON struct {
 	ID        string            `json:"id"`
 	Name      string            `json:"name"`
+	Source    string            `json:"source,omitempty"`
 	Icon      string            `json:"icon"`
 	Preset    string            `json:"preset"`
 	Host      string            `json:"host"`
@@ -138,7 +139,7 @@ func currentProvider(a *agent.Agent) (string, string) {
 
 func providerInfo(p provider.Provider, agents []*agent.Agent) providerJSON {
 	out := providerJSON{
-		ID: p.ID, Name: p.Name, Icon: p.Icon, Preset: p.Preset, Host: p.Host(),
+		ID: p.ID, Name: p.Name, Source: p.Source, Icon: p.Icon, Preset: p.Preset, Host: p.Host(),
 		Chat: p.Chat, Responses: p.Responses, Anthropic: p.Anthropic,
 		Catalog: p.Catalog, Website: p.Website, KeysURL: p.KeysURL,
 		Headers: p.Headers, BalanceURL: p.BalanceURL, BalancePath: p.BalancePath,
@@ -352,6 +353,10 @@ func providerRoutes(mux *http.ServeMux, w Windows, gw *gateway.Server) {
 			p, err := provider.Find(in.ID)
 			if err != nil {
 				fail(rw, err)
+				return
+			}
+			if p.Source != "" {
+				fail(rw, fmt.Errorf("%s comes from %s; edit that file instead", p.ID, p.Source))
 				return
 			}
 			writeJSON(rw, map[string]string{"key": p.Key})

@@ -254,7 +254,7 @@ type endpoints struct{ chat, responses, anthropic string }
 // points at one magpie knows (its endpoints whole when the URL is the
 // preset's own, only its name and logo when it is another path on the same
 // host, like a coding plan), a custom one otherwise.
-func imported(name, key string, e endpoints, models []string) (Provider, string) {
+func imported(name, key string, e endpoints, models []string, allowMissingKey bool) (Provider, string) {
 	e.chat, e.responses, e.anthropic = cleanBase(e.chat), cleanBase(e.responses), cleanBase(e.anthropic)
 	for _, u := range []string{e.chat, e.responses, e.anthropic} {
 		if u == "" {
@@ -282,7 +282,7 @@ func imported(name, key string, e endpoints, models []string) (Provider, string)
 			}
 		}
 	}
-	if p.Key == "" && !keyOptional(p) {
+	if p.Key == "" && !allowMissingKey && !keyOptional(p) {
 		return Provider{}, "it has no API key"
 	}
 	return p, ""
@@ -386,7 +386,7 @@ func readClaudeSettings(path string) ([]AppImport, error) {
 	it := AppImport{Ref: "settings", From: "settings.json"}
 	name, key, eps, models, skip := ccSwitchEntry(e)
 	if skip == "" {
-		it.Provider, skip = imported(name, key, eps, models)
+		it.Provider, skip = imported(name, key, eps, models, false)
 	}
 	if skip != "" {
 		it.Provider = Provider{Name: e.name}
@@ -464,7 +464,7 @@ func readCCSwitch(path string) ([]AppImport, error) {
 		}
 		name, key, eps, models, skip := ccSwitchEntry(e)
 		if skip == "" {
-			it.Provider, skip = imported(name, key, eps, models)
+			it.Provider, skip = imported(name, key, eps, models, false)
 		}
 		if skip != "" {
 			it.Provider = Provider{Name: e.name}
@@ -725,7 +725,7 @@ func readAlma(path string) ([]AppImport, error) {
 			eps.chat = base
 		}
 		if skip == "" {
-			it.Provider, skip = imported(name, key, eps, models)
+			it.Provider, skip = imported(name, key, eps, models, false)
 		}
 		if skip != "" {
 			it.Provider, it.Skip = Provider{Name: name}, skip

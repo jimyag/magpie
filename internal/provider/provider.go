@@ -2,8 +2,7 @@
 // lives, which protocols it speaks, the API key the user typed in, and which
 // of its models should show up in the agents' pickers.
 //
-// Nothing here reads environment variables. A provider is exactly what the
-// user entered, kept in ~/.config/magpie/providers.json (mode 0600).
+// User-added providers live in ~/.config/magpie/providers.json (mode 0600).
 package provider
 
 import (
@@ -15,6 +14,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/yetone/magpie/internal/catalog"
 )
 
 // Protocol is a wire API magpie can speak to an upstream.
@@ -109,6 +110,10 @@ type Provider struct {
 	// Account is set when the provider is an agent the user signed in to
 	// (see account.go); it is derived, never stored.
 	Account *Account `json:"-"`
+	// Source is a read-only agent configuration file discovered at runtime.
+	Source string `json:"-"`
+	// SourceModels keeps names and reasoning levels from a Codex model catalog.
+	SourceModels []catalog.Model `json:"-"`
 }
 
 type file struct {
@@ -171,6 +176,11 @@ func All() []Provider {
 		a.Models, a.Fallback, a.Routing, a.Affinity = picks[a.ID].Models, picks[a.ID].Fallback, picks[a.ID].Routing, picks[a.ID].Affinity
 		out = append(out, a)
 	}
+	for _, p := range externalProviders() {
+		if _, taken := find(out, p.ID); !taken && !picks[p.ID].Hidden {
+			out = append(out, p)
+		}
+	}
 	return out
 }
 
@@ -223,6 +233,9 @@ func Save(p Provider) error {
 	}
 	if p.ID == "" || p.ID != Slug(p.ID) {
 		return fmt.Errorf("provider id must be lowercase letters, digits and dashes, not %q", p.ID)
+	}
+	if source := externalPath(p.ID); !stored(p.ID) && source != "" {
+		return fmt.Errorf("%s comes from an agent config; edit %s instead", p.ID, source)
 	}
 	if p.ID == "magpie" {
 		return errors.New(`"magpie" is what agents call the gateway itself; pick another id`)
@@ -288,6 +301,9 @@ func ShowAccount(id string) error {
 // Delete removes a provider. An account is only hidden from magpie (its
 // model picks kept); signing out is the agent's job.
 func Delete(id string) error {
+	if source := externalPath(id); !stored(id) && source != "" {
+		return fmt.Errorf("%s comes from an agent config; edit %s instead", id, source)
+	}
 	if _, ok := find(Accounts(), id); ok {
 		f := load()
 		for i := range f.Providers {

@@ -845,6 +845,7 @@ function renderProviders() {
     const who = el("div", "who");
     const name = el("div", "name", p.name);
     if (p.sponsored) name.append(el("span", "badge", t("sponsored")));
+    if (p.source) name.append(el("span", "badge", t("from agent config")));
     const n = p.models.filter((m) => m.on).length;
     const models = n ? t(n === 1 ? "{n} model" : "{n} models", { n }) : t("no models exposed");
     who.append(name, el("div", "sub", (p.account ? t("signed in as {user}", { user: p.account.user }) : p.host) + " · " + models));
@@ -1701,6 +1702,21 @@ const PROTOS = [["chat", "OpenAI", "Chat Completions — most agents"], ["respon
 
 // renderEditor: an existing provider (p), a new preset (presetID), or custom.
 function renderEditor(p, presetID) {
+  if (p?.source) {
+    const ed = el("div", "editor");
+    ed.append(el("div", "ehead", p.name));
+    ed.append(...field(t("Source"), el("div", "sub", p.source)));
+    ed.append(...field(t("Endpoint"), el("div", "sub", p.anthropic || p.responses || p.chat)));
+    const models = p.models.filter((m) => m.on).map((m) => m.id).join(", ");
+    ed.append(...field(t("Models"), el("div", "sub", models || t("no models exposed"))));
+    if (!p.ready) ed.append(el("div", "hint", t("This config has no API key available to magpie. Supply the key in the source file or its referenced environment variable.")));
+    const close = el("button", "text primary", t("Close"));
+    close.onclick = cancelEdit;
+    const bar = el("div", "bar");
+    bar.append(el("span", "grow"), close);
+    ed.append(bar);
+    return ed;
+  }
   const pr = presetID ? providers.presets.find((x) => x.id === presetID) : p?.preset ? providers.presets.find((x) => x.id === p.preset) : null;
   const isNew = !p, custom = !pr;
   draft = draft || (p

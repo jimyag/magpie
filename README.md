@@ -107,6 +107,20 @@ separate Responses endpoint, `catalog=` to borrow a models.dev list, and
 `models=` to name the models to expose. Anything a preset does not know can
 be overridden the same way.
 
+magpie also reads `~/.claude/providers/*.json` and
+`$CODEX_HOME/*.config.toml` (`~/.codex/*.config.toml` when `CODEX_HOME` is
+unset) as read-only providers. They appear as `claude-<file>` and
+`codex-<profile>` in `magpie providers`, the app, and model pickers. Changes
+to the source files take effect on the next read; magpie does not copy their
+keys into `providers.json`. A source must have an API base URL, and requests
+need a key available to magpie: Claude's `env.ANTHROPIC_AUTH_TOKEN` or
+`env.ANTHROPIC_API_KEY`, or a Codex provider's `experimental_bearer_token`
+or `env_key` variable in magpie's own process environment. A token supplied
+only by a `claude --settings` shell wrapper is unavailable to magpie; that
+source is shown but cannot route requests until magpie can read its key.
+Claude models come from the config's model environment variables; Codex models
+come from `model` and the profile's `model_catalog_json` when present.
+
 ### Signed-in agents as providers
 
 An agent you have signed in to is a subscription with models behind it, so
