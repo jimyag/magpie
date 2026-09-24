@@ -136,7 +136,7 @@ func TestImportCodexConfig(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
-	t.Setenv("CODEX_HOME", filepath.Join(home, "codex"))
+	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
 	t.Setenv("OPENAI_API_KEY", "sk-unrelated")
 	t.Setenv("RELAY_KEY", "sk-environment")
 	config := codexConfigPath()
@@ -216,6 +216,30 @@ model_catalog_json = "magpie-models.json"
 	}
 	if p, err := Find("deepseek"); err != nil || p.Key != "sk-explicit" || strings.Join(p.Models, ",") != "deepseek-chat,deepseek-reasoner,gpt-6-sol" {
 		t.Fatalf("imported provider did not persist: %+v %v", p, err)
+	}
+}
+
+func TestCodexImportModelsSameBasename(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	config := filepath.Join(home, "other", "config.toml")
+	models := []byte(`{"models":[{"slug":"custom-model","visibility":"list"}]}`)
+	for _, path := range []string{
+		filepath.Join(home, ".codex", "magpie-models.json"),
+		filepath.Join(home, "other", "magpie-models.json"),
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, models, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := codexImportModels(config, "../.codex/magpie-models.json"); len(got) != 0 {
+		t.Fatalf("magpie's own catalog was imported: %v", got)
+	}
+	if got := codexImportModels(config, "magpie-models.json"); len(got) != 1 || got[0] != "custom-model" {
+		t.Fatalf("user catalog with the same basename was skipped: %v", got)
 	}
 }
 

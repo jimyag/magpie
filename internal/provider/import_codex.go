@@ -105,13 +105,13 @@ func codexImportModels(configPath, catalogPath string) []string {
 	if catalogPath == "" {
 		return nil
 	}
+	home, _ := os.UserHomeDir()
 	if strings.HasPrefix(catalogPath, "~/") {
-		home, _ := os.UserHomeDir()
 		catalogPath = filepath.Join(home, strings.TrimPrefix(catalogPath, "~/"))
 	} else if !filepath.IsAbs(catalogPath) {
 		catalogPath = filepath.Join(filepath.Dir(configPath), catalogPath)
 	}
-	if filepath.Base(catalogPath) == "magpie-models.json" {
+	if filepath.Clean(catalogPath) == filepath.Join(home, ".codex", "magpie-models.json") {
 		return nil
 	}
 	b, err := os.ReadFile(catalogPath)
