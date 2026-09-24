@@ -845,7 +845,6 @@ function renderProviders() {
     const who = el("div", "who");
     const name = el("div", "name", p.name);
     if (p.sponsored) name.append(el("span", "badge", t("sponsored")));
-    if (p.source) name.append(el("span", "badge", t("from agent config")));
     const n = p.models.filter((m) => m.on).length;
     const models = n ? t(n === 1 ? "{n} model" : "{n} models", { n }) : t("no models exposed");
     who.append(name, el("div", "sub", (p.account ? t("signed in as {user}", { user: p.account.user }) : p.host) + " · " + models));
@@ -1369,7 +1368,7 @@ function renderAdd() {
   q.oninput = () => { presetQuery = q.value; drawTiles(); };
   head.append(q);
   const imp = el("button", "text", t("Import…"));
-  imp.title = t("Bring over providers set up in Alma or CC Switch");
+  imp.title = t("Bring over providers set up in other apps");
   imp.onclick = openImportApps;
   head.append(imp);
   if (providers.providers.length) {
@@ -1702,21 +1701,6 @@ const PROTOS = [["chat", "OpenAI", "Chat Completions — most agents"], ["respon
 
 // renderEditor: an existing provider (p), a new preset (presetID), or custom.
 function renderEditor(p, presetID) {
-  if (p?.source) {
-    const ed = el("div", "editor");
-    ed.append(el("div", "ehead", p.name));
-    ed.append(...field(t("Source"), el("div", "sub", p.source)));
-    ed.append(...field(t("Endpoint"), el("div", "sub", p.anthropic || p.responses || p.chat)));
-    const models = p.models.filter((m) => m.on).map((m) => m.id).join(", ");
-    ed.append(...field(t("Models"), el("div", "sub", models || t("no models exposed"))));
-    if (!p.ready) ed.append(el("div", "hint", t("This config has no API key available to magpie. Supply the key in the source file or its referenced environment variable.")));
-    const close = el("button", "text primary", t("Close"));
-    close.onclick = cancelEdit;
-    const bar = el("div", "bar");
-    bar.append(el("span", "grow"), close);
-    ed.append(bar);
-    return ed;
-  }
   const pr = presetID ? providers.presets.find((x) => x.id === presetID) : p?.preset ? providers.presets.find((x) => x.id === p.preset) : null;
   const isNew = !p, custom = !pr;
   draft = draft || (p
@@ -1979,7 +1963,7 @@ async function openImportApps() {
 
 // appIcon is an import source's logo; Claude Code has its mark among the
 // vendor icons rather than an app tile of its own.
-const appIcon = (id) => id === "claude-code" ? "icons/claudecode-color.svg" : `icons/app-${id}.png`;
+const appIcon = (id) => id === "claude-code" ? "icons/claudecode-color.svg" : id === "codex" ? "icons/codex-color.svg" : `icons/app-${id}.png`;
 
 function renderImportApps(ia) {
   const ed = el("div", "editor new importapps");
@@ -1999,7 +1983,7 @@ function renderImportApps(ia) {
   };
   bar.append(count, cancel, go);
   if (ia.loading) {
-    ed.append(el("div", "appnote", t("Reading Alma and CC Switch…")), bar);
+    ed.append(el("div", "appnote", t("Reading other apps…")), bar);
     go.disabled = true;
     return ed;
   }

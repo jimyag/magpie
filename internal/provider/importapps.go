@@ -66,6 +66,7 @@ var appReaders = []struct {
 	{"alma", "Alma", almaPath, readAlma},
 	{"cc-switch", "CC Switch", ccSwitchPath, readCCSwitch},
 	{"claude-code", "Claude Code", claudeSettingsPath, readClaudeSettings},
+	{"codex", "Codex", codexConfigPath, readCodexConfig},
 }
 
 // ImportSources reads every app magpie can import from.
@@ -254,7 +255,7 @@ type endpoints struct{ chat, responses, anthropic string }
 // points at one magpie knows (its endpoints whole when the URL is the
 // preset's own, only its name and logo when it is another path on the same
 // host, like a coding plan), a custom one otherwise.
-func imported(name, key string, e endpoints, models []string, allowMissingKey bool) (Provider, string) {
+func imported(name, key string, e endpoints, models []string) (Provider, string) {
 	e.chat, e.responses, e.anthropic = cleanBase(e.chat), cleanBase(e.responses), cleanBase(e.anthropic)
 	for _, u := range []string{e.chat, e.responses, e.anthropic} {
 		if u == "" {
@@ -282,7 +283,7 @@ func imported(name, key string, e endpoints, models []string, allowMissingKey bo
 			}
 		}
 	}
-	if p.Key == "" && !allowMissingKey && !keyOptional(p) {
+	if p.Key == "" && !keyOptional(p) {
 		return Provider{}, "it has no API key"
 	}
 	return p, ""
@@ -351,6 +352,9 @@ func fileExists(p string) bool {
 }
 
 func claudeSettingsPath() string {
+	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
+		return filepath.Join(dir, "settings.json")
+	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".claude", "settings.json")
 }
@@ -386,7 +390,7 @@ func readClaudeSettings(path string) ([]AppImport, error) {
 	it := AppImport{Ref: "settings", From: "settings.json"}
 	name, key, eps, models, skip := ccSwitchEntry(e)
 	if skip == "" {
-		it.Provider, skip = imported(name, key, eps, models, false)
+		it.Provider, skip = imported(name, key, eps, models)
 	}
 	if skip != "" {
 		it.Provider = Provider{Name: e.name}
@@ -464,7 +468,7 @@ func readCCSwitch(path string) ([]AppImport, error) {
 		}
 		name, key, eps, models, skip := ccSwitchEntry(e)
 		if skip == "" {
-			it.Provider, skip = imported(name, key, eps, models, false)
+			it.Provider, skip = imported(name, key, eps, models)
 		}
 		if skip != "" {
 			it.Provider = Provider{Name: e.name}
@@ -725,7 +729,7 @@ func readAlma(path string) ([]AppImport, error) {
 			eps.chat = base
 		}
 		if skip == "" {
-			it.Provider, skip = imported(name, key, eps, models, false)
+			it.Provider, skip = imported(name, key, eps, models)
 		}
 		if skip != "" {
 			it.Provider, it.Skip = Provider{Name: name}, skip

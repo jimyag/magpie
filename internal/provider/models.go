@@ -22,9 +22,7 @@ const manyModels = 24
 func (p Provider) Available() []catalog.Model {
 	signedIn := p.Account != nil && p.Account.models != nil
 	var known []catalog.Model
-	if len(p.SourceModels) > 0 {
-		known = p.SourceModels
-	} else if signedIn {
+	if signedIn {
 		known = p.Account.models()
 	} else {
 		seen := map[string]bool{}

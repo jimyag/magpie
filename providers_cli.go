@@ -50,9 +50,7 @@ func providers() error {
 	w := [5]int{}
 	for _, p := range all {
 		r := row{name: bold.Render(p.Name), id: muted.Render(p.ID), host: p.Host()}
-		if p.Source != "" {
-			r.name += " " + faint.Render("agent config")
-		} else if p.Preset == "" && p.Account == nil {
+		if p.Preset == "" && p.Account == nil {
 			r.name += " " + faint.Render("custom")
 		}
 		switch {
@@ -395,13 +393,10 @@ func showProvider(p provider.Provider) error {
 		}
 	}
 	name := bold.Render(p.Name) + muted.Render("  "+p.ID)
-	if p.Source != "" {
-		name += faint.Render("  agent config")
-	} else if p.Preset == "" && p.Account == nil {
+	if p.Preset == "" && p.Account == nil {
 		name += faint.Render("  custom")
 	}
 	fmt.Println(" ", name)
-	kv("source", p.Source)
 	kv("chat", p.Chat)
 	kv("responses", p.Responses)
 	kv("anthropic", p.Anthropic)
