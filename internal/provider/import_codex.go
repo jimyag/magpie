@@ -66,7 +66,7 @@ func readCodexConfig(path string) ([]AppImport, error) {
 			}
 			models = append(models, profile["model"])
 			catalogPath := profile["model_catalog_json"]
-			if catalogPath == "" {
+			if catalogPath == "" && top["model_provider"] == id {
 				catalogPath = top["model_catalog_json"]
 			}
 			models = append(models, codexImportModels(path, catalogPath)...)
@@ -88,8 +88,17 @@ func readCodexConfig(path string) ([]AppImport, error) {
 
 func codexTableID(table, prefix string) (string, bool) {
 	id, ok := strings.CutPrefix(table, prefix)
-	id = strings.Trim(id, `"`)
-	return id, ok && id != ""
+	if !ok || id == "" {
+		return "", false
+	}
+	if strings.HasPrefix(id, `"`) {
+		if !strings.HasSuffix(id, `"`) {
+			return "", false
+		}
+		id = strings.Trim(id, `"`)
+		return id, id != ""
+	}
+	return id, !strings.Contains(id, ".")
 }
 
 func codexImportModels(configPath, catalogPath string) []string {
@@ -101,6 +110,9 @@ func codexImportModels(configPath, catalogPath string) []string {
 		catalogPath = filepath.Join(home, strings.TrimPrefix(catalogPath, "~/"))
 	} else if !filepath.IsAbs(catalogPath) {
 		catalogPath = filepath.Join(filepath.Dir(configPath), catalogPath)
+	}
+	if filepath.Base(catalogPath) == "magpie-models.json" {
+		return nil
 	}
 	b, err := os.ReadFile(catalogPath)
 	if err != nil {

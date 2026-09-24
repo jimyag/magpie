@@ -145,6 +145,7 @@ func TestImportCodexConfig(t *testing.T) {
 	}
 	data := `model_provider = "magpie"
 model = "deepseek/deepseek-chat"
+model_catalog_json = "magpie-models.json"
 
 [model_providers.magpie]
 base_url = "http://127.0.0.1:3448/v1"
@@ -156,6 +157,16 @@ base_url = "https://relay.example.com/v1"
 wire_api = "responses"
 experimental_bearer_token = "sk-explicit"
 
+[model_providers.deepseek.http_headers]
+X-Org = "abc"
+
+[model_providers."my.relay"]
+base_url = "https://other.example.com/v1"
+experimental_bearer_token = "sk-other"
+
+[model_providers."my.relay".http_headers]
+X-Org = "xyz"
+
 [model_providers.unkeyed]
 base_url = "https://unkeyed.example.com/v1"
 env_key = "RELAY_KEY"
@@ -164,6 +175,15 @@ env_key = "RELAY_KEY"
 model_provider = "deepseek"
 model = "deepseek-chat"
 model_catalog_json = "models.json"
+
+[profiles.inherited]
+model_provider = "deepseek"
+model = "gpt-6-sol"
+
+[profiles.magpiecatalog]
+model_provider = "deepseek"
+model = "gpt-6-sol"
+model_catalog_json = "magpie-models.json"
 `
 	if err := os.WriteFile(config, []byte(data), 0o600); err != nil {
 		t.Fatal(err)
@@ -171,12 +191,18 @@ model_catalog_json = "models.json"
 	if err := os.WriteFile(filepath.Join(filepath.Dir(config), "models.json"), []byte(`{"models":[{"slug":"deepseek-chat","visibility":"list"},{"slug":"deepseek-reasoner","visibility":"list"},{"slug":"old-model","visibility":"hide"}]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(config), "magpie-models.json"), []byte(`{"models":[{"slug":"openrouter/x-ai/grok-4.7","visibility":"list"},{"slug":"group/auto-glm-5-3","visibility":"list"}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	items := itemsOf(t, "codex")
+	if len(items) != 4 || items["my.relay"].Ref != "my.relay" || items["my.relay"].Skip != "" {
+		t.Fatalf("provider tables: %+v", items)
+	}
 	if items["magpie"].Skip == "" || items["unkeyed"].Skip == "" {
 		t.Fatalf("gateway or env-key provider offered: %+v %+v", items["magpie"], items["unkeyed"])
 	}
 	ds := items["deepseek"]
-	if ds.Skip != "" || ds.Provider.Key != "sk-explicit" || ds.Provider.Responses != "https://relay.example.com/v1" || strings.Join(ds.Provider.Models, ",") != "deepseek-chat,deepseek-reasoner" {
+	if ds.Skip != "" || ds.Provider.Key != "sk-explicit" || ds.Provider.Responses != "https://relay.example.com/v1" || strings.Join(ds.Provider.Models, ",") != "deepseek-chat,deepseek-reasoner,gpt-6-sol" {
 		t.Fatalf("Codex import: %+v", ds)
 	}
 	if _, err := Find("deepseek"); err == nil {
@@ -188,7 +214,7 @@ model_catalog_json = "models.json"
 	if err := os.Remove(config); err != nil {
 		t.Fatal(err)
 	}
-	if p, err := Find("deepseek"); err != nil || p.Key != "sk-explicit" || strings.Join(p.Models, ",") != "deepseek-chat,deepseek-reasoner" {
+	if p, err := Find("deepseek"); err != nil || p.Key != "sk-explicit" || strings.Join(p.Models, ",") != "deepseek-chat,deepseek-reasoner,gpt-6-sol" {
 		t.Fatalf("imported provider did not persist: %+v %v", p, err)
 	}
 }
