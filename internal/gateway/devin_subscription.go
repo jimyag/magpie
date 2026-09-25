@@ -167,12 +167,12 @@ func (b *subscriptionBridge) startDevin(ctx context.Context, req *Request, model
 	if err != nil {
 		return fail(err)
 	}
-	_, reply, err := conn.send("session/prompt", map[string]any{"sessionId": sess.SessionID, "prompt": prompt})
+	id, err := conn.send("session/prompt", map[string]any{"sessionId": sess.SessionID, "prompt": prompt})
 	if err != nil {
 		return fail(err)
 	}
 	go func() {
-		res, err := conn.await(context.Background(), reply)
+		res, err := conn.await(context.Background(), id)
 		if err != nil {
 			run.emit(Event{Kind: KError, Text: "devin: " + err.Error()})
 		} else {
@@ -229,11 +229,11 @@ type devinRPCError struct {
 
 func (e *devinRPCError) Error() string { return e.Message }
 
-func (c *devinConn) send(method string, params any) (int64, <-chan devinReply, error) {
+func (c *devinConn) send(method string, params any) (int64, error) {
 	id := c.seq.Add(1)
 	b, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": id, "method": method, "params": params})
 	if err != nil {
-		return 0, nil, err
+		return 0, err
 	}
 	ch := make(chan devinReply, 1)
 	c.mu.Lock()
@@ -246,12 +246,18 @@ func (c *devinConn) send(method string, params any) (int64, <-chan devinReply, e
 		c.mu.Lock()
 		delete(c.pending, id)
 		c.mu.Unlock()
-		return 0, nil, err
+		return 0, err
 	}
-	return id, ch, nil
+	return id, nil
 }
 
-func (c *devinConn) await(ctx context.Context, ch <-chan devinReply) (json.RawMessage, error) {
+func (c *devinConn) await(ctx context.Context, id int64) (json.RawMessage, error) {
+	c.mu.Lock()
+	ch := c.pending[id]
+	c.mu.Unlock()
+	if ch == nil {
+		return nil, errors.New("no such call")
+	}
 	select {
 	case r := <-ch:
 		return r.result, r.err
@@ -261,11 +267,11 @@ func (c *devinConn) await(ctx context.Context, ch <-chan devinReply) (json.RawMe
 }
 
 func (c *devinConn) call(ctx context.Context, method string, params any) (json.RawMessage, error) {
-	_, ch, err := c.send(method, params)
+	id, err := c.send(method, params)
 	if err != nil {
 		return nil, err
 	}
-	return c.await(ctx, ch)
+	return c.await(ctx, id)
 }
 
 func (c *devinConn) answer(id json.RawMessage, result any) {
