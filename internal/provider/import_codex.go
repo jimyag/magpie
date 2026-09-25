@@ -82,9 +82,8 @@ func readCodexConfig(path string) ([]AppImport, error) {
 		it.Provider, it.Skip = imported(name, mp["experimental_bearer_token"], eps, cleanList(models))
 		if it.Skip != "" {
 			it.Provider = Provider{Name: name}
-		} else if headers := tables[table+".http_headers"]; len(headers) > 0 {
-			it.Provider.Preset = "" // custom headers must survive provider normalization
-			it.Provider.Headers = headers
+		} else if it.Provider.Preset == "" {
+			it.Provider.Headers = tables[table+".http_headers"]
 		}
 		out = append(out, it)
 	}

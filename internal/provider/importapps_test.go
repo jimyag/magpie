@@ -210,6 +210,9 @@ model_catalog_json = "magpie-models.json"
 	if got := items["my.relay"].Provider.Headers["X-Org"]; got != "xyz" {
 		t.Fatalf("quoted provider's header = %q, want %q", got, "xyz")
 	}
+	if p := items["openrouter"].Provider; p.Preset != "openrouter" || len(p.Headers) != 0 {
+		t.Fatalf("preset import should keep its request shape: %+v", p)
+	}
 	if items["magpie"].Skip == "" || items["unkeyed"].Skip == "" {
 		t.Fatalf("gateway or env-key provider offered: %+v %+v", items["magpie"], items["unkeyed"])
 	}
@@ -233,8 +236,8 @@ model_catalog_json = "magpie-models.json"
 	if p.Headers["X-Org"] != "abc" {
 		t.Fatalf("Codex http_headers lost during import: got %q, want %q", p.Headers["X-Org"], "abc")
 	}
-	if p, err := Find("openrouter"); err != nil || p.Headers["X-Org"] != "preset" || p.Preset != "" {
-		t.Fatalf("preset provider lost its custom headers: %+v %v", p, err)
+	if p, err := Find("openrouter"); err != nil || p.Preset != "openrouter" || len(p.Headers) != 0 {
+		t.Fatalf("preset import changed its request shape: %+v %v", p, err)
 	}
 }
 
