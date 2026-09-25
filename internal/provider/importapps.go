@@ -222,7 +222,7 @@ func settle(items []AppImport, have []Provider, used map[string]bool) []AppImpor
 // sameProvider: the same key, host, and headers are the same account; a is
 // the provider magpie has, which may hold the key among its others.
 func sameProvider(a, b Provider) bool {
-	if !maps.Equal(a.Headers, b.Headers) {
+	if !maps.Equal(cleanHeaders(a.Headers), cleanHeaders(b.Headers)) {
 		return false
 	}
 	has := a.Key == b.Key

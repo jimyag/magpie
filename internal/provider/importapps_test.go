@@ -158,7 +158,7 @@ wire_api = "responses"
 experimental_bearer_token = "sk-explicit"
 
 [model_providers.deepseek.http_headers]
-X-Org = "abc"
+X-Org = " abc "
 
 [model_providers."my.relay"]
 base_url = "https://other.example.com/v1"
@@ -225,6 +225,9 @@ model_catalog_json = "magpie-models.json"
 	}
 	if added, err := ImportFromApps([]AppPick{{Source: "codex", Ref: "deepseek"}, {Source: "codex", Ref: "openrouter"}}); err != nil || len(added) != 2 {
 		t.Fatalf("import: %v %v", added, err)
+	}
+	if it := itemsOf(t, "codex")["deepseek"]; it.Status != "same" {
+		t.Fatalf("reimport after header normalization: %+v", it)
 	}
 	if err := os.Remove(config); err != nil {
 		t.Fatal(err)
